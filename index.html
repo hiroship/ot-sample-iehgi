@@ -30,12 +30,12 @@
   --ink: #1c2a21;            /* 墨色の濃緑 */
   --ink-2: #26372c;
   --ink-3: #142019;
-  --text: #2a2e28;
-  --muted: #6b6d62;
+  --text: #262a24;           /* 本文：和紙上で約13:1 */
+  --muted: #5b5d53;          /* 補足：paper-2上でも5:1以上（WCAG AA） */
   --line: rgba(28, 42, 33, .14);
   --line-strong: rgba(28, 42, 33, .32);
   --on-ink: #eee8da;
-  --on-ink-muted: rgba(238, 232, 218, .66);
+  --on-ink-muted: rgba(238, 232, 218, .74); /* 濃緑上で約7:1 */
   --line-on-ink: rgba(238, 232, 218, .16);
   --shu: #a5432b;            /* 落款の朱（ごく小面積のみ） */
 
@@ -47,11 +47,30 @@
 
   --gutter: clamp(20px, 5vw, 48px);
   --wrap: 1160px;
-  --sec-y: clamp(80px, 11vw, 144px);
+  --wide: 1320px;
+  /* セクション余白は3段階：通常／詰める（補足系）／広げる（見せ場） */
+  --sec-y: clamp(88px, 11.5vw, 152px);
+  --sec-y-sm: clamp(64px, 8vw, 108px);
+  --sec-y-lg: clamp(104px, 14vw, 184px);
   --header-h: 72px;
   --dock-h: 0px;
   --radius: 2px;
+  --radius-card: 4px;
   --ease: cubic-bezier(.22, .61, .36, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur-fast: .18s;          /* 押下・色変化 */
+  --dur: .32s;               /* hover・開閉 */
+  --dur-reveal: .7s;         /* スクロール表示 */
+
+  /* 文字サイズの下限は12px。補足・ラベル用 */
+  --fs-xs: .75rem;
+  --fs-sm: .82rem;
+
+  /* 影：接地・近景・遠景の多層で和紙を重ねたような奥行きを出す */
+  --shadow-rest: 0 1px 0 rgba(255, 253, 249, .7) inset, 0 1px 1px rgba(20, 32, 25, .04), 0 2px 6px -2px rgba(20, 32, 25, .06);
+  --shadow-lift: 0 1px 1px rgba(20, 32, 25, .05), 0 6px 12px -6px rgba(20, 32, 25, .12), 0 30px 48px -30px rgba(20, 32, 25, .5);
+  --shadow-photo: 0 2px 4px rgba(20, 32, 25, .06), 0 24px 40px -24px rgba(20, 32, 25, .3), 0 64px 96px -56px rgba(20, 32, 25, .55);
+  --shadow-cta: 0 1px 0 rgba(255, 255, 255, .12) inset, 0 2px 4px -1px rgba(20, 32, 25, .2), 0 14px 26px -14px rgba(20, 32, 25, .6);
 
   --washi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
@@ -76,13 +95,17 @@ body{
   line-break: strict;
   overflow-wrap: anywhere;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
   padding-bottom: var(--dock-h);
 }
 img{ display: block; max-width: 100%; height: auto; }
 a{ color: inherit; }
-p{ margin: 0; }
+a, button, summary{ touch-action: manipulation; }
+p{ margin: 0; text-wrap: pretty; }
 h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-height: 1.5; letter-spacing: .06em; font-feature-settings: "palt"; word-break: auto-phrase; text-wrap: balance; }
-:focus-visible{ outline: 2px solid var(--accent); outline-offset: 3px; }
+:focus-visible{ outline: 2px solid var(--accent-dark); outline-offset: 3px; border-radius: 1px; }
+/* 濃い面ではリングを明るく（非テキスト3:1） */
+:is(.sec--ink, .site-footer, .lb) :focus-visible{ outline-color: var(--on-ink); }
 ::selection{ background: var(--accent-soft); color: var(--ink); }
 
 .wrap{ width: min(var(--wrap), 100% - var(--gutter) * 2); margin-inline: auto; }
@@ -96,22 +119,26 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 /* ============================================================
    Buttons
    ============================================================ */
+/* 主CTAは全ページで「アクセント濃色の塗り＋矢印」に統一。副ボタンは線のみ */
 .btn{
   --bg: var(--accent-dark); --fg: #fff;
   display: inline-flex; align-items: center; justify-content: center; gap: .7em;
-  min-height: 54px; padding: .8em 1.7em;
+  min-height: 56px; padding: .8em 1.8em;
   background: var(--bg); color: var(--fg);
-  font: 500 .98rem/1.4 var(--gothic); letter-spacing: .1em;
+  font: 700 .98rem/1.4 var(--gothic); letter-spacing: .12em;
   text-decoration: none; border: 1px solid var(--bg); border-radius: var(--radius);
-  transition: background .3s var(--ease), color .3s var(--ease), border-color .3s var(--ease), transform .3s var(--ease);
+  box-shadow: var(--shadow-cta);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.btn svg{ width: 1.05em; height: 1.05em; flex: none; transition: transform .3s var(--ease); }
+.btn svg{ width: 1.05em; height: 1.05em; flex: none; transition: transform var(--dur) var(--ease-out); }
 .btn:hover{ --bg: var(--ink); }
 .btn:hover svg{ transform: translateX(3px); }
-.btn--ghost{ --bg: transparent; --fg: var(--ink); border-color: var(--line-strong); }
+.btn:active{ transform: translateY(1px); box-shadow: none; }
+.btn--ghost{ --bg: transparent; --fg: var(--ink); border-color: var(--line-strong); box-shadow: none; font-weight: 500; }
 .btn--ghost:hover{ --bg: var(--ink); --fg: var(--on-ink); border-color: var(--ink); }
-.btn--light{ --bg: var(--paper); --fg: var(--ink); }
-.btn--light:hover{ --bg: #fff; --fg: var(--accent-dark); }
+/* 濃緑の面の上の主CTA：塗りは同じアクセント濃色、明るい縁取りで面から浮かせる */
+.btn--on-ink{ box-shadow: 0 0 0 1px color-mix(in srgb, var(--on-ink) 45%, transparent), 0 0 0 7px color-mix(in srgb, var(--on-ink) 8%, transparent), 0 24px 40px -22px rgba(0, 0, 0, .65); }
+.btn--on-ink:hover{ --bg: var(--paper); --fg: var(--ink); }
 
 /* ============================================================
    Header
@@ -126,7 +153,7 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 }
 .site-header.is-scrolled{ border-bottom-color: var(--line); box-shadow: 0 6px 24px -18px rgba(20, 32, 25, .5); }
 .site-header .wrap{ height: 100%; display: flex; align-items: center; gap: 24px; width: min(1320px, 100% - var(--gutter) * 2); }
-.brand{ display: flex; align-items: center; gap: 12px; text-decoration: none; min-width: 0; margin-right: auto; }
+.brand{ display: flex; align-items: center; gap: 12px; min-height: 44px; text-decoration: none; min-width: 0; margin-right: auto; }
 .brand-mark{
   flex: none; width: 42px; height: 42px; display: grid; place-items: center;
   background: var(--ink); color: var(--on-ink);
@@ -136,11 +163,11 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 }
 .brand-text{ display: grid; line-height: 1.25; min-width: 0; }
 .brand-name{ font: 600 1.14rem/1.3 var(--mincho); letter-spacing: .1em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.brand-kana{ font-size: .66rem; letter-spacing: .22em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-kana{ font-size: var(--fs-xs); letter-spacing: .2em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .gnav ul{ list-style: none; margin: 0; padding: 0; display: flex; gap: clamp(14px, 1.6vw, 26px); }
-.gnav a{ position: relative; display: block; padding: .4em 0; font-size: .86rem; letter-spacing: .1em; text-decoration: none; color: var(--ink); white-space: nowrap; }
-.gnav a::after{ content: ""; position: absolute; left: 0; right: 0; bottom: .1em; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: right; transition: transform .35s var(--ease); }
+.gnav a{ position: relative; display: flex; align-items: center; min-height: 44px; padding: 0; font-size: .86rem; letter-spacing: .1em; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.gnav a::after{ content: ""; position: absolute; left: 0; right: 0; bottom: 9px; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: right; transition: transform .35s var(--ease); }
 .gnav a:hover::after{ transform: scaleX(1); transform-origin: left; }
 .header-cta{ min-height: 44px; padding: .55em 1.25em; font-size: .88rem; }
 .menu-btn{ display: none; }
@@ -175,128 +202,139 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 }
 
 /* ============================================================
-   Hero（分割レイアウト・縦長写真）
+   Hero（左：余白の効いたコピー／右：画面端まで裁ち落とした写真）
    ============================================================ */
-.hero{ position: relative; padding: clamp(28px, 4vw, 56px) 0 clamp(64px, 8vw, 112px); overflow: hidden; }
-.hero::before{ /* 背景の淡い区画 */
-  content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; right: 0; width: 38%;
-  background: var(--paper-2) var(--washi);
-}
+.hero{ position: relative; }
 .hero-grid{
-  width: min(1320px, 100% - var(--gutter) * 2); margin-inline: auto;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
-  align-items: center; gap: clamp(32px, 5vw, 88px);
-  min-height: min(calc(100svh - var(--header-h) - 80px), 900px);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: clamp(40px, 5.5vw, 104px);
+  padding-left: max(var(--gutter), calc((100% - var(--wide)) / 2));
+  min-height: clamp(600px, calc(100svh - var(--header-h)), 960px);
 }
-.hero-copy{ position: relative; padding-block: 24px; }
-.hero-kicker{ display: flex; align-items: center; gap: 14px; margin-bottom: 28px; font-size: .8rem; letter-spacing: .24em; color: var(--accent-dark); }
-.hero-kicker::before{ content: ""; width: 40px; height: 1px; background: currentColor; }
-.hero-badges{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
-.hero-badges > *{
-  display: inline-flex; align-items: center; min-height: 30px; padding: .2em .9em;
-  border: 1px solid var(--accent-line); background: color-mix(in srgb, var(--white) 55%, transparent);
-  font-size: .78rem; letter-spacing: .1em; color: var(--ink); border-radius: 999px;
-}
+.hero-copy{ position: relative; align-self: center; max-width: 600px; padding-block: clamp(48px, 6vw, 96px); }
+.hero-kicker{ display: flex; align-items: center; gap: 16px; margin-bottom: clamp(24px, 3vw, 36px); font-size: var(--fs-sm); font-weight: 500; letter-spacing: .28em; color: var(--accent-dark); }
+.hero-kicker::before{ content: ""; flex: none; width: 48px; height: 1px; background: currentColor; }
 .hero-catch{
-  font-size: clamp(2rem, 4.1vw, 3.5rem); line-height: 1.55; letter-spacing: .08em; color: var(--ink); font-weight: 600;
+  font-size: clamp(2.25rem, 4.3vw, 3.9rem); line-height: 1.42; letter-spacing: .08em; color: var(--ink); font-weight: 700;
 }
 .hero-catch em{
   font-style: normal; color: var(--accent-dark);
-  background: linear-gradient(transparent 72%, color-mix(in srgb, var(--accent) 22%, transparent) 72%, color-mix(in srgb, var(--accent) 22%, transparent) 92%, transparent 92%);
+  background: linear-gradient(transparent 76%, color-mix(in srgb, var(--accent) 20%, transparent) 76% 94%, transparent 94%);
 }
-.hero-sub{ margin-top: 26px; max-width: 34em; font-size: clamp(.95rem, 1.2vw, 1.04rem); color: var(--text); line-height: 2.05; }
-.hero-actions{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 38px; }
-.hero-meta{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); font-size: .86rem; color: var(--muted); }
-.hero-meta .area{ display: inline-flex; align-items: baseline; gap: .6em; }
-.hero-meta .area b{ font-weight: 500; color: var(--ink); font-size: .74rem; letter-spacing: .18em; padding: .1em .7em; border: 1px solid var(--line-strong); border-radius: var(--radius); }
-.since{ font-family: var(--mincho); color: var(--ink); letter-spacing: .12em; }
+.hero-sub{ margin-top: clamp(22px, 2.6vw, 32px); max-width: 30em; font-size: clamp(1rem, 1.2vw, 1.06rem); color: var(--text); line-height: 2.05; }
+.hero-actions{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(30px, 3.4vw, 44px); }
+.hero-actions .btn:first-child{ min-width: 16em; }
+/* 信頼の証：CTAの直下に罫線で区切り、縦罫で並べる */
+.hero-proof{ display: grid; gap: 14px; margin-top: clamp(36px, 4vw, 52px); padding-top: 22px; border-top: 1px solid var(--line-strong); }
+.hero-badges{ display: flex; flex-wrap: wrap; row-gap: 8px; }
+.hero-badges > *{
+  display: inline-flex; align-items: center; gap: .6em; padding: 0 1.1em; border-left: 1px solid var(--line-strong);
+  font-size: .88rem; font-weight: 500; line-height: 1.6; letter-spacing: .1em; color: var(--ink);
+}
+.hero-badges > *:first-child{ padding-left: 0; border-left: 0; }
+.hero-badges > *::before{ content: ""; flex: none; width: 5px; height: 5px; background: var(--accent); transform: rotate(45deg); }
+.hero-meta{ font-size: .88rem; color: var(--muted); }
+.hero-meta .area{ display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .4em .9em; }
+.hero-meta .area b{ font-weight: 500; color: var(--ink); font-size: var(--fs-xs); letter-spacing: .2em; padding: .1em .7em; border: 1px solid var(--line-strong); border-radius: var(--radius); }
 
-.hero-visual{ position: relative; justify-self: end; width: 100%; display: flex; justify-content: flex-end; }
-.hero-photo{
-  position: relative; margin: 0;
-  width: min(100%, calc((100svh - var(--header-h) - 120px) * .8)); min-width: min(100%, 360px);
-  aspect-ratio: 4 / 5;
-  background: var(--paper-2);
-  box-shadow: 0 40px 70px -40px rgba(20, 32, 25, .55);
+.hero-visual{ position: relative; min-height: 100%; }
+.hero-photo{ position: absolute; inset: 0; margin: 0; overflow: hidden; background: var(--paper-2); }
+.hero-photo img{ width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%; }
+.hero-photo::before{ /* 下端と左端をわずかに沈め、白文字と縦書き札を読みやすく */
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(14, 22, 17, .64), rgba(14, 22, 17, .2) 26%, transparent 46%),
+    linear-gradient(to right, rgba(14, 22, 17, .18), transparent 22%);
 }
-.hero-photo img{ width: 100%; height: 100%; object-fit: cover; }
 .hero-photo::after{ /* 写真の内側に細い額縁線 */
-  content: ""; position: absolute; inset: 12px; border: 1px solid rgba(255, 253, 249, .45); pointer-events: none;
+  content: ""; position: absolute; inset: 16px; z-index: 1; border: 1px solid rgba(255, 253, 249, .4); pointer-events: none;
 }
 .hero-photo figcaption{
-  position: absolute; left: 0; bottom: -2.4em; font-size: .74rem; letter-spacing: .12em; color: var(--muted);
+  position: absolute; z-index: 2; left: clamp(32px, 3.4vw, 48px); bottom: clamp(30px, 3.2vw, 44px); max-width: 60%;
   display: flex; align-items: center; gap: .8em;
+  font-size: .82rem; letter-spacing: .16em; color: rgba(255, 253, 249, .94); text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
 }
-.hero-photo figcaption::before{ content: ""; width: 24px; height: 1px; background: currentColor; }
-/* 縦書き要素 */
+.hero-photo figcaption::before{ content: ""; flex: none; width: 28px; height: 1px; background: currentColor; }
+/* 縦書きの札：写真の左端にまたがせる */
 .hero-tate{
-  position: absolute; z-index: 2; top: clamp(20px, 4vw, 48px); right: calc(100% + clamp(-28px, -1.5vw, -14px));
+  position: absolute; z-index: 3; top: clamp(40px, 6vw, 88px); left: 0; translate: -50% 0; margin: 0;
   writing-mode: vertical-rl; text-orientation: mixed;
   display: flex; align-items: flex-start; gap: 18px;
-  padding: 22px 12px; background: var(--paper); color: var(--ink);
-  font-family: var(--mincho); box-shadow: 0 18px 30px -24px rgba(20, 32, 25, .45);
+  padding: 24px 13px; background: var(--paper) var(--washi); color: var(--ink);
+  font-family: var(--mincho); box-shadow: var(--shadow-lift);
 }
-.hero-tate .t-cat{ font-size: 1.12rem; font-weight: 600; letter-spacing: .32em; }
-.hero-tate .t-area{ font-size: .82rem; letter-spacing: .26em; color: var(--muted); }
+.hero-tate .t-cat{ font-size: 1.14rem; font-weight: 600; letter-spacing: .34em; }
+.hero-tate .t-area{ font-size: .82rem; letter-spacing: .28em; color: var(--muted); }
 .hero-tate .seal{
   writing-mode: horizontal-tb; width: 26px; height: 26px; display: grid; place-items: center;
   background: var(--shu); color: #fbf3ea; font: 700 .82rem/1 var(--mincho); letter-spacing: 0; border-radius: 3px;
   margin-top: 6px;
 }
-.scroll-cue{
-  position: absolute; left: var(--gutter); bottom: 22px; display: flex; align-items: center; gap: 12px;
-  writing-mode: vertical-rl; font-size: .66rem; letter-spacing: .3em; color: var(--muted); text-decoration: none;
+/* 創業年の丸印（データがある店だけ表示） */
+.hero-since{
+  position: absolute; z-index: 3; right: clamp(28px, 3.4vw, 52px); bottom: clamp(28px, 3.4vw, 52px); margin: 0;
+  width: 116px; aspect-ratio: 1; display: grid; place-items: center; text-align: center; padding: 16px;
+  border-radius: 50%; background: var(--paper) var(--washi); color: var(--accent-dark);
+  font: 700 .92rem/1.45 var(--mincho); letter-spacing: .1em; word-break: auto-phrase;
+  box-shadow: inset 0 0 0 1px var(--accent-dark), inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--accent-line), var(--shadow-lift);
+  rotate: -6deg;
 }
-.scroll-cue::after{ content: ""; width: 1px; height: 56px; background: linear-gradient(var(--line-strong), transparent); }
 
 @media (max-width: 1080px) and (min-width: 861px){
-  .hero-grid{ grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); }
+  .hero-grid{ grid-template-columns: minmax(0, 1fr) minmax(0, .92fr); gap: 48px; }
+  .hero-since{ width: 100px; font-size: .84rem; }
 }
 @media (max-width: 860px){
-  .hero{ padding: 0 0 56px; }
-  .hero::before{ display: none; }
-  .hero-grid{ display: flex; flex-direction: column-reverse; gap: 0; width: 100%; min-height: 0; }
-  .hero-visual{ justify-self: stretch; }
-  .hero-photo{ width: 100%; min-width: 0; aspect-ratio: 4 / 4.6; max-height: 68svh; box-shadow: none; }
+  .hero-grid{ display: flex; flex-direction: column-reverse; gap: 0; padding-left: 0; min-height: 0; }
+  .hero-visual{ min-height: 0; }
+  .hero-photo{ position: relative; inset: auto; width: 100%; aspect-ratio: 4 / 5; max-height: 76svh; }
   .hero-photo::after{ inset: 10px; }
-  .hero-photo figcaption{ left: auto; right: var(--gutter); bottom: 14px; color: rgba(255, 253, 249, .9); text-shadow: 0 1px 8px rgba(0, 0, 0, .45); }
-  .hero-photo figcaption::before{ background: rgba(255, 253, 249, .8); }
-  .hero-tate{ top: 18px; right: 18px; padding: 16px 9px; gap: 12px; }
+  .hero-photo figcaption{ left: auto; right: var(--gutter); bottom: 68px; font-size: var(--fs-xs); letter-spacing: .12em; }
+  .hero-tate{ top: 16px; left: auto; right: 16px; translate: none; padding: 16px 9px; gap: 12px; }
   .hero-tate .t-cat{ font-size: .98rem; }
-  .hero-tate .t-area{ font-size: .74rem; }
+  .hero-tate .t-area{ font-size: var(--fs-xs); }
+  .hero-since{ width: 84px; padding: 10px; left: var(--gutter); right: auto; bottom: 64px; font-size: var(--fs-xs); }
   .hero-copy{
-    width: calc(100% - var(--gutter) * 2); margin: -44px auto 0; padding: 30px 24px 4px;
-    background: var(--paper) var(--washi); position: relative; z-index: 2;
+    width: calc(100% - var(--gutter) * 2 + 8px); max-width: none; margin: -48px auto 0; padding: 34px 22px 8px;
+    background: var(--paper) var(--washi); z-index: 2;
   }
-  .hero-kicker{ margin-bottom: 18px; }
-  .hero-badges{ margin-bottom: 18px; }
-  .hero-catch{ font-size: clamp(1.7rem, 7.2vw, 2.3rem); }
-  .hero-sub{ margin-top: 18px; }
-  .hero-actions{ margin-top: 28px; }
-  .hero-actions .btn{ flex: 1 1 100%; }
-  .scroll-cue{ display: none; }
+  .hero-copy::before{ content: ""; position: absolute; top: 0; left: 22px; width: 40px; height: 2px; background: var(--accent); }
+  .hero-kicker{ margin-bottom: 18px; font-size: .78rem; letter-spacing: .2em; }
+  .hero-kicker::before{ width: 28px; }
+  .hero-catch{ font-size: clamp(1.95rem, 8.3vw, 2.5rem); line-height: 1.48; letter-spacing: .06em; }
+  .hero-sub{ margin-top: 18px; line-height: 1.95; }
+  .hero-actions{ margin-top: 28px; gap: 10px; }
+  .hero-actions .btn{ flex: 1 1 100%; min-width: 0; }
+  .hero-actions .btn:first-child{ min-height: 60px; }
+  .hero-proof{ margin-top: 30px; padding-top: 18px; }
+  .hero-badges > *{ font-size: .84rem; padding: 0 .9em; }
 }
 
 /* ============================================================
    Section scaffolding
    ============================================================ */
 .sec{ padding-block: var(--sec-y); position: relative; }
+.sec--tight{ padding-block: var(--sec-y-sm); }
+.sec--loose{ padding-block: var(--sec-y-lg); }
 .sec--alt{ background: var(--paper-2) var(--washi); }
 .sec--ink{ background: var(--ink) var(--washi); color: var(--on-ink); }
-.sec-head{ display: grid; grid-template-columns: auto 1fr; align-items: end; column-gap: clamp(16px, 2vw, 26px); margin-bottom: clamp(40px, 5.5vw, 72px); }
+/* 見出し：縦書きの番号（其の一）＋英字ラベル＋罫線＋和文タイトルの3層で統一 */
+.sec-head{ display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; column-gap: clamp(18px, 2.2vw, 30px); margin-bottom: clamp(44px, 6vw, 80px); }
 .sec-num{
   grid-row: span 2; align-self: stretch;
   writing-mode: vertical-rl; display: flex; align-items: center; gap: 10px;
   padding-left: clamp(14px, 1.8vw, 22px); border-left: 1px solid var(--accent-line);
-  font: 600 .9rem/1 var(--mincho); letter-spacing: .3em; color: var(--accent-dark);
+  font: 600 .88rem/1 var(--mincho); letter-spacing: .34em; color: var(--accent-dark);
 }
 .sec--ink .sec-num{ color: color-mix(in srgb, var(--accent) 70%, #fff); border-left-color: var(--line-on-ink); }
-.sec-en{ font-size: .7rem; letter-spacing: .34em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.sec-en{ display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: var(--fs-xs); font-weight: 500; letter-spacing: .36em; text-transform: uppercase; color: var(--muted); }
+.sec-en::after{ content: ""; flex: none; width: 32px; height: 1px; background: currentColor; opacity: .6; }
 .sec--ink .sec-en{ color: var(--on-ink-muted); }
-.sec-title{ font-size: clamp(1.6rem, 3vw, 2.35rem); color: var(--ink); letter-spacing: .1em; }
+.sec-title{ font-size: clamp(1.75rem, 3.3vw, 2.6rem); font-weight: 700; line-height: 1.35; color: var(--ink); letter-spacing: .12em; }
 .sec--ink .sec-title{ color: var(--on-ink); }
 .sec-head--center{ grid-template-columns: 1fr; justify-items: center; text-align: center; }
 .sec-head--center .sec-num{ grid-row: auto; writing-mode: horizontal-tb; border: 0; padding: 0; margin-bottom: 14px; }
+.sec-head--center .sec-en::before{ content: ""; flex: none; width: 32px; height: 1px; background: currentColor; opacity: .6; }
 
 /* ブロック系の共通リセット（render.py の生成マークアップに依存しない汎用指定） */
 .blk > :is(ol, ul):only-child{ display: contents; }
@@ -308,54 +346,68 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 /* ============================================================
    Intro
    ============================================================ */
-.intro{ padding-block: clamp(72px, 9vw, 128px); }
+.intro{ padding-block: clamp(40px, 5vw, 72px) var(--sec-y); }
 .intro-grid{ display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(36px, 6vw, 96px); align-items: start; }
+/* Proof：ヒーロー直下に、特徴スタンプを罫線で区切った帯として置く */
+.stamps{
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 1px;
+  margin-bottom: clamp(64px, 8vw, 112px);
+  background: var(--line); border-block: 1px solid var(--line-strong);
+}
+.stamps > *{
+  position: relative; display: grid; align-content: center; justify-items: center; gap: 6px; text-align: center;
+  padding: clamp(26px, 3vw, 38px) 16px; background: var(--paper) var(--washi);
+}
+.stamps > *::before{ /* 落款のような小さな菱形 */
+  content: ""; width: 6px; height: 6px; margin-bottom: 8px; background: var(--accent); transform: rotate(45deg);
+}
+.stamps strong{ display: block; font: 600 clamp(1.3rem, 2.3vw, 1.75rem)/1.4 var(--mincho); letter-spacing: .1em; color: var(--ink); font-feature-settings: "palt"; word-break: auto-phrase; }
+.stamps span{ font-size: .84rem; line-height: 1.7; letter-spacing: .12em; color: var(--muted); }
+@media (max-width: 560px){
+  .stamps{ grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .stamps > *{ padding: 22px 6px; }
+  .stamps > *::before{ margin-bottom: 4px; }
+  .stamps strong{ font-size: clamp(1rem, 4.4vw, 1.2rem); letter-spacing: .04em; }
+  .stamps span{ font-size: var(--fs-xs); letter-spacing: .04em; line-height: 1.6; }
+}
 .intro-lead{
   font-family: var(--mincho); font-weight: 600; color: var(--ink);
-  font-size: clamp(1.4rem, 2.5vw, 2rem); line-height: 1.85; letter-spacing: .1em; font-feature-settings: "palt"; word-break: auto-phrase;
+  font-size: clamp(1.5rem, 2.7vw, 2.15rem); line-height: 1.8; letter-spacing: .1em; font-feature-settings: "palt"; word-break: auto-phrase;
   position: relative; padding-top: 34px;
 }
 .intro-lead::before{ content: ""; position: absolute; top: 0; left: 0; width: 56px; height: 1px; background: var(--accent); }
-.intro-body{ font-size: 1rem; line-height: 2.1; color: var(--text); }
+.intro-body{ font-size: 1rem; line-height: 2.05; color: var(--text); max-width: 36em; }
 .intro-body p + p{ margin-top: 1.1em; }
-.stamps{ display: flex; flex-wrap: wrap; gap: 14px; margin-top: 40px; }
-.stamps > *{
-  width: 112px; aspect-ratio: 1; display: grid; place-content: center; text-align: center; padding: 12px;
-  border-radius: 50%; border: 1px solid var(--accent-dark); color: var(--accent-dark);
-  outline: 1px solid var(--accent-line); outline-offset: -6px;
-  font: 600 .84rem/1.5 var(--mincho); letter-spacing: .08em; word-break: auto-phrase;
-  background: color-mix(in srgb, var(--white) 50%, transparent);
-}
-.stamps > * :is(b, strong, em){ display: block; font-size: 1.3em; font-style: normal; color: var(--ink); }
 @media (max-width: 860px){
-  .intro-grid{ grid-template-columns: 1fr; }
-  .stamps{ justify-content: center; gap: 10px; }
-  .stamps > *{ width: 100px; font-size: .78rem; }
+  .intro-grid{ grid-template-columns: 1fr; gap: 28px; }
 }
 
 /* ============================================================
    Services
    ============================================================ */
-.svc-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: clamp(18px, 2.4vw, 32px); }
+.svc-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: clamp(20px, 2.6vw, 36px); }
 .svc-grid > *{
-  margin: 0; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 0 0 26px; display: flex; flex-direction: column; overflow: hidden;
-  transition: transform .4s var(--ease), box-shadow .4s var(--ease), border-color .4s var(--ease);
+  margin: 0; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-card);
+  padding: 0 0 30px; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--shadow-rest);
+  transition: transform .4s var(--ease-out), box-shadow .4s var(--ease), border-color .4s var(--ease);
 }
-.svc-grid > *:hover{ transform: translateY(-3px); border-color: var(--accent-line); box-shadow: 0 26px 40px -30px rgba(20, 32, 25, .5); }
-.svc-grid > * > :not(img, figure, picture){ margin-inline: 26px; }
-.svc-grid > * > :first-child:not(img, figure, picture){ margin-top: 28px; }
+.svc-grid > *:hover{ transform: translateY(-3px); border-color: var(--accent-line); box-shadow: var(--shadow-lift); }
+.svc-grid > * > :not(img, figure, picture){ margin-inline: clamp(24px, 2.4vw, 30px); }
+.svc-grid > * > :first-child:not(img, figure, picture){ margin-top: 30px; }
 .svc-grid :is(figure, picture){ margin: 0; overflow: hidden; }
 .svc-grid img{ aspect-ratio: 3 / 2; transition: transform .8s var(--ease); }
 .svc-grid > *:hover img{ transform: scale(1.04); }
-.svc-grid :is(figure, picture, img) + *{ margin-top: 22px; }
-.svc-grid :is(h3, h4){ font-size: 1.22rem; letter-spacing: .1em; margin-bottom: 10px; display: flex; align-items: center; gap: .6em; }
+.svc-grid :is(figure, picture, img) + *{ margin-top: 26px; }
+.service-body{ display: flex; flex-direction: column; flex: 1; }
+.svc-grid :is(h3, h4){ font-size: 1.26rem; line-height: 1.45; letter-spacing: .1em; margin-bottom: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: .6em; }
 .svc-grid :is(h3, h4)::before{ content: ""; flex: none; width: 7px; height: 7px; background: var(--accent); transform: rotate(45deg); }
-.svc-grid p{ font-size: .93rem; line-height: 1.95; color: var(--text); }
-.svc-grid :is([class*="tag"], ul){ display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding: 18px 0 0; }
+.svc-grid p{ font-size: .95rem; line-height: 1.95; color: var(--text); }
+.svc-grid :is([class*="tag"], ul){ display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding: 22px 0 0; }
+/* タグは中立色（アクセントはCTAと要点だけに使う） */
 .svc-grid :is([class*="tag"], ul) > *, .svc-grid span[class*="tag"]{
-  font-size: .74rem; letter-spacing: .08em; line-height: 1.6; padding: .2em .75em; border-radius: 999px;
-  background: var(--accent-soft); color: var(--accent-dark);
+  font-size: .78rem; font-weight: 500; letter-spacing: .06em; line-height: 1.6; padding: .25em .85em; border-radius: var(--radius);
+  background: transparent; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 /* ============================================================
@@ -383,12 +435,13 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
   margin: 14px 4px 0; font: 600 .98rem/1.6 var(--mincho); letter-spacing: .08em; color: var(--ink);
 }
 .works-grid figcaption :is(h3, h4, [class*="title"]){ margin: 0; }
-.works-grid :is(time, [class*="date"]){ display: block; margin: 4px 4px 0; font-size: .74rem; letter-spacing: .14em; color: var(--muted); font-family: var(--gothic); font-weight: 400; }
+.works-grid :is(time, [class*="date"]){ display: block; margin: 4px 4px 0; font-size: .78rem; letter-spacing: .14em; color: var(--muted); font-family: var(--gothic); font-weight: 400; }
 .works-grid p{ margin: 6px 4px 0; font-size: .84rem; line-height: 1.8; color: var(--muted); }
 @media (max-width: 560px){
   .works-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .works-grid > *{ padding: 6px 6px 12px; }
-  .works-grid :is(h3, h4, figcaption, [class*="title"]){ font-size: .86rem; margin-top: 10px; }
+  .works-grid :is(h3, h4, figcaption, [class*="title"]){ font-size: .88rem; line-height: 1.55; margin-top: 10px; }
+  .works-grid :is(time, [class*="date"]){ font-size: var(--fs-xs); letter-spacing: .08em; }
 }
 
 /* Lightbox */
@@ -402,8 +455,8 @@ h1,h2,h3,h4{ margin: 0; font-family: var(--mincho); font-weight: 600; line-heigh
 .lb-img{ max-width: min(1100px, calc(100vw - 160px)); max-height: calc(100dvh - 190px); width: auto; height: auto; object-fit: contain; }
 .lb-cap{ display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: .4em 1.2em; text-align: center; font-size: .9rem; }
 .lb-cap .c-title{ font-family: var(--mincho); font-size: 1.05rem; letter-spacing: .1em; }
-.lb-cap .c-date{ font-size: .78rem; letter-spacing: .14em; color: var(--on-ink-muted); }
-.lb-count{ position: fixed; top: 22px; left: 26px; font-size: .78rem; letter-spacing: .2em; color: var(--on-ink-muted); }
+.lb-cap .c-date{ font-size: .82rem; letter-spacing: .14em; color: var(--on-ink-muted); }
+.lb-count{ position: fixed; top: 26px; left: 26px; font-size: .82rem; font-variant-numeric: tabular-nums; letter-spacing: .2em; color: var(--on-ink-muted); }
 .lb-btn{
   position: fixed; display: grid; place-items: center; width: 48px; height: 48px; padding: 0;
   background: rgba(255, 253, 249, .08); color: var(--on-ink); border: 1px solid var(--line-on-ink); border-radius: 50%; cursor: pointer;
@@ -427,23 +480,24 @@ html.lb-lock{ overflow: hidden; }
    Reasons
    ============================================================ */
 .reason-list{ display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: clamp(28px, 4vw, 56px) clamp(24px, 3.5vw, 48px); counter-reset: rs; }
-.reason-list > *{ margin: 0; position: relative; padding-top: 28px; border-top: 1px solid var(--line-strong); }
+.reason-list > *{ margin: 0; position: relative; padding-top: 30px; border-top: 1px solid var(--line-strong); }
 .reason-list > *::before{ content: ""; position: absolute; top: -1px; left: 0; width: 48px; height: 3px; background: var(--accent); }
 .reason-list :is([class*="num"], [class$="-no"], [class~="no"]){
-  display: block; font: 600 2.6rem/1 var(--mincho); color: var(--accent-dark); letter-spacing: .04em; margin-bottom: 18px;
+  display: flex; align-items: baseline; gap: 12px; font: 600 clamp(2.8rem, 4.4vw, 3.6rem)/1 var(--mincho); color: var(--accent-dark); letter-spacing: .02em; margin-bottom: 22px;
   font-variant-numeric: tabular-nums;
 }
+.reason-list :is([class*="num"], [class$="-no"], [class~="no"])::after{ content: ""; flex: 1; height: 1px; background: var(--line); translate: 0 -.3em; }
 .reason-list img{ aspect-ratio: 3 / 2; margin-bottom: 20px; }
 .reason-list :is(h3, h4){ font-size: 1.24rem; letter-spacing: .1em; margin-bottom: 12px; }
-.reason-list p{ font-size: .94rem; line-height: 2; }
+.reason-list p{ font-size: .95rem; line-height: 2; max-width: 34em; }
 
 /* ============================================================
    Flow
    ============================================================ */
 .flow-list{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .flow-list > *{
-  margin: 0; position: relative; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 30px 24px 28px;
+  margin: 0; position: relative; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-card);
+  padding: 32px 26px 30px; box-shadow: var(--shadow-rest);
 }
 .flow-list > *:not(:last-child)::after{ /* 次の工程への矢印 */
   content: ""; position: absolute; top: 50%; right: -15px; z-index: 1; width: 10px; height: 10px;
@@ -456,7 +510,7 @@ html.lb-lock{ overflow: hidden; }
 .flow-list :is([class*="step"], [class*="num"], [class$="-no"], [class~="no"])::after{ content: ""; width: 28px; height: 1px; background: var(--accent-line); }
 .flow-list img{ aspect-ratio: 4 / 3; margin-bottom: 18px; }
 .flow-list :is(h3, h4){ font-size: 1.1rem; letter-spacing: .1em; margin-bottom: 10px; }
-.flow-list p{ font-size: .9rem; line-height: 1.95; }
+.flow-list p{ font-size: .93rem; line-height: 1.95; }
 @media (max-width: 960px){
   .flow-list{ grid-template-columns: 1fr; gap: 14px; max-width: 640px; }
   .flow-list > *:not(:last-child)::after{ top: auto; bottom: -13px; right: auto; left: 34px; transform: rotate(135deg); }
@@ -530,11 +584,11 @@ html.lb-lock{ overflow: hidden; }
 .info-table :is(th, td){ padding: 20px 8px; text-align: left; vertical-align: top; line-height: 1.9; }
 .info-table th{ width: 9.5em; font-weight: 500; font-family: var(--mincho); letter-spacing: .12em; color: var(--ink); white-space: nowrap; }
 .info-table td a{ color: var(--accent-dark); text-underline-offset: .25em; }
-.address-card{ background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(26px, 3vw, 38px); position: relative; }
+.address-card{ background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: clamp(28px, 3.2vw, 40px); position: relative; box-shadow: var(--shadow-lift); }
 .address-card::before{ content: ""; position: absolute; top: -1px; left: -1px; width: 56px; height: 3px; background: var(--accent); }
-.address-card .lbl{ font-size: .72rem; letter-spacing: .3em; color: var(--muted); margin-bottom: 10px; }
-.address-card .shop{ font: 600 1.3rem/1.5 var(--mincho); letter-spacing: .1em; color: var(--ink); }
-.address-card .kana{ font-size: .72rem; letter-spacing: .2em; color: var(--muted); margin-bottom: 20px; }
+.address-card .lbl{ font-size: var(--fs-xs); font-weight: 500; letter-spacing: .3em; color: var(--muted); margin-bottom: 10px; }
+.address-card .shop{ font: 700 1.3rem/1.5 var(--mincho); letter-spacing: .1em; color: var(--ink); }
+.address-card .kana{ font-size: var(--fs-xs); letter-spacing: .2em; color: var(--muted); margin-bottom: 20px; }
 .address-card address{ font-style: normal; font-size: .95rem; line-height: 1.95; padding-top: 18px; border-top: 1px solid var(--line); }
 .address-card .links{ display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
 .address-card .links .btn{ min-height: 48px; justify-content: space-between; font-size: .9rem; }
@@ -548,7 +602,7 @@ html.lb-lock{ overflow: hidden; }
 /* ============================================================
    Contact
    ============================================================ */
-.contact{ padding-block: clamp(88px, 12vw, 160px); overflow: hidden; text-align: center; }
+.contact{ padding-block: var(--sec-y-lg); overflow: hidden; text-align: center; }
 .contact::before{ /* 波紋（砂紋）のモチーフ */
   content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
   background: repeating-radial-gradient(circle at 50% 120%, transparent 0 22px, var(--line-on-ink) 22px 23px);
@@ -558,29 +612,29 @@ html.lb-lock{ overflow: hidden; }
 .contact .sec-head{ margin-bottom: 26px; }
 .contact-shop{ font-family: var(--mincho); font-size: clamp(1rem, 1.6vw, 1.2rem); letter-spacing: .14em; color: var(--on-ink-muted); }
 .contact-cta{ margin-top: 44px; display: grid; justify-items: center; gap: 22px; }
-.contact-cta .btn--light{ min-height: 72px; padding: 1em 2.6em; font-size: clamp(1rem, 1.6vw, 1.12rem); min-width: min(100%, 420px); }
-.contact-sub{ display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 28px; margin-top: 12px; }
-.contact-tel{ display: inline-flex; align-items: center; gap: .7em; text-decoration: none; color: var(--on-ink); }
+.contact-cta .btn{ min-height: 76px; padding: 1em 2.8em; font-size: clamp(1.04rem, 1.6vw, 1.16rem); min-width: min(100%, 440px); }
+.contact-sub{ display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 28px; margin-top: 8px; }
+.contact-tel{ display: inline-flex; align-items: center; gap: .7em; min-height: 48px; text-decoration: none; color: var(--on-ink); }
 .contact-tel svg{ width: 1.1em; height: 1.1em; color: color-mix(in srgb, var(--accent) 70%, #fff); }
 .contact-tel .v{ font: 600 clamp(1.5rem, 3.2vw, 2.1rem)/1.2 var(--mincho); letter-spacing: .1em; font-variant-numeric: tabular-nums; }
-.contact-ig{ display: inline-flex; align-items: center; gap: .6em; font-size: .9rem; letter-spacing: .08em; color: var(--on-ink-muted); text-decoration: none; border-bottom: 1px solid var(--line-on-ink); padding-bottom: 2px; }
-.contact-ig:hover{ color: var(--on-ink); }
+.contact-ig{ display: inline-flex; align-items: center; gap: .6em; min-height: 44px; font-size: .92rem; letter-spacing: .08em; color: var(--on-ink-muted); text-decoration: underline; text-decoration-color: var(--line-on-ink); text-underline-offset: .45em; transition: color var(--dur) var(--ease); }
+.contact-ig:hover{ color: var(--on-ink); text-decoration-color: currentColor; }
 .contact-ig svg{ width: 1.05em; height: 1.05em; }
 
 /* ============================================================
    Footer
    ============================================================ */
-.site-footer{ background: var(--ink-3); color: var(--on-ink-muted); padding: 64px 0 40px; font-size: .86rem; }
+.site-footer{ background: var(--ink-3); color: var(--on-ink-muted); padding: 64px 0 40px; font-size: .88rem; line-height: 1.9; }
 .footer-grid{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 32px; padding-bottom: 36px; border-bottom: 1px solid var(--line-on-ink); }
 .site-footer .brand-name{ color: var(--on-ink); }
 .site-footer .brand-kana{ color: var(--on-ink-muted); }
 .site-footer .brand-mark{ background: var(--accent-dark); box-shadow: inset 0 0 0 3px var(--accent-dark), inset 0 0 0 4px rgba(255, 255, 255, .35); }
 .footer-info{ display: grid; gap: 6px; max-width: 30em; }
 .footer-info address{ font-style: normal; }
-.footer-nav ul{ list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, auto); gap: 8px 32px; }
-.footer-nav a{ text-decoration: none; }
+.footer-nav ul{ list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, auto); gap: 0 32px; }
+.footer-nav a{ display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; transition: color var(--dur) var(--ease); }
 .footer-nav a:hover{ color: var(--on-ink); }
-.copy{ padding-top: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: .74rem; letter-spacing: .12em; }
+.copy{ padding-top: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: .78rem; letter-spacing: .12em; }
 
 /* ============================================================
    Mobile dock
@@ -593,30 +647,45 @@ html.lb-lock{ overflow: hidden; }
     background: color-mix(in srgb, var(--paper) 94%, transparent);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     border-top: 1px solid var(--line);
-    transform: translateY(110%); transition: transform .4s var(--ease);
+    box-shadow: 0 -10px 24px -20px rgba(20, 32, 25, .45);
+    transform: translateY(110%); transition: transform .24s var(--ease); /* 退場は速く */
   }
-  .dock.is-shown{ transform: none; }
+  .dock.is-shown{ transform: none; transition: transform .42s var(--ease-out); }
   .dock a{
     display: inline-flex; align-items: center; justify-content: center; gap: .55em; min-height: 48px;
-    border-radius: var(--radius); text-decoration: none; font-size: .9rem; font-weight: 500; letter-spacing: .08em;
+    border-radius: var(--radius); text-decoration: none; font-size: .92rem; font-weight: 500; letter-spacing: .08em;
+    transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
+  .dock a:active{ transform: scale(.98); }
   .dock svg{ width: 1.1em; height: 1.1em; flex: none; }
   .dock-tel{ flex: 0 0 34%; border: 1px solid var(--line-strong); color: var(--ink); background: var(--paper-card); }
-  .dock-cta{ flex: 1 1 auto; background: var(--accent-dark); color: #fff; padding-inline: 1em; min-width: 0; }
+  .dock-cta{ flex: 1 1 auto; background: var(--accent-dark); color: #fff; padding-inline: 1em; min-width: 0; font-weight: 700; box-shadow: var(--shadow-cta); }
   .dock-cta span{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* ============================================================
    Motion（控えめ）
    ============================================================ */
-.js .reveal{ opacity: 0; transform: translateY(18px); transition: opacity .9s var(--ease), transform .9s var(--ease); transition-delay: var(--d, 0s); }
+.js .reveal{ opacity: 0; transform: translateY(14px); transition: opacity var(--dur-reveal) var(--ease-out), transform var(--dur-reveal) var(--ease-out); transition-delay: var(--d, 0s); }
 .js .reveal.is-in{ opacity: 1; transform: none; }
-.js .hero-photo img{ animation: heroIn 1.6s var(--ease) both; }
-@keyframes heroIn{ from{ opacity: 0; transform: scale(1.04); } to{ opacity: 1; transform: none; } }
+.js .hero-photo img{ animation: heroIn 1.4s var(--ease-out) both; }
+.js .hero-copy > *{ animation: copyIn .8s var(--ease-out) both; }
+.js .hero-copy > :nth-child(2){ animation-delay: .08s; }
+.js .hero-copy > :nth-child(3){ animation-delay: .16s; }
+.js .hero-copy > :nth-child(n+4){ animation-delay: .24s; }
+@keyframes heroIn{ from{ opacity: 0; transform: scale(1.035); } to{ opacity: 1; transform: none; } }
+@keyframes copyIn{ from{ opacity: 0; transform: translateY(10px); } to{ opacity: 1; transform: none; } }
+
+/* タッチ端末では hover の浮き上がりを残さない */
+@media (hover: none){
+  .svc-grid > *:hover, .works-grid > *:hover, .works-grid > *:nth-child(even):hover{ transform: none; }
+  .svc-grid > *:hover img{ transform: none; }
+  .btn:hover svg{ transform: none; }
+}
 @media (prefers-reduced-motion: reduce){
   .js .reveal{ opacity: 1; transform: none; transition: none; }
-  .js .hero-photo img{ animation: none; }
-  *{ transition-duration: .01ms !important; }
+  .js .hero-photo img, .js .hero-copy > *{ animation: none; }
+  *, *::before, *::after{ transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 @media print{ .site-header, .dock, .lb{ display: none !important; } body{ padding: 0; } }
 </style>
@@ -657,40 +726,39 @@ html.lb-lock{ overflow: hidden; }
   <div class="hero-grid">
     <div class="hero-copy">
       <p class="hero-kicker">茅ヶ崎市｜造園・外構</p>
-      <div class="hero-badges opt"><span class="badge">茅ヶ崎市東海岸</span><span class="badge">造園＋外構</span><span class="badge">有資格者在籍</span></div>
       <h1 class="hero-catch" id="hero-title">庭と外構、<em>まとめて</em>任せられる。</h1>
       <p class="hero-sub">茅ヶ崎市東海岸に本店を構える造園会社。季節で表情を変える庭づくりと、暮らしに合う外構を、職人の技術で形にします。</p>
       <div class="hero-actions">
         <a class="btn" data-cta href="tel:0467388528">電話で相談する<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="btn btn--ghost" href="#works">施工事例を見る</a>
       </div>
-      <div class="hero-meta">
-        <span class="area"><b>対応エリア</b>茅ヶ崎・湘南の造園・外構</span>
-        <span class="since opt"></span>
+      <div class="hero-proof">
+        <div class="hero-badges opt"><span class="badge">茅ヶ崎市東海岸</span><span class="badge">造園＋外構</span><span class="badge">有資格者在籍</span></div>
+        <p class="hero-meta"><span class="area"><b>対応エリア</b>茅ヶ崎・湘南の造園・外構</span></p>
       </div>
     </div>
     <div class="hero-visual">
       <figure class="hero-photo">
         <img src="img/10.jpg" alt="剪定のビフォーアフター" width="1200" height="1500" fetchpriority="high" decoding="async">
         <figcaption aria-hidden="true">剪定のビフォーアフター</figcaption>
-        <p class="hero-tate" aria-hidden="true">
-          <span class="t-cat">造園・外構</span>
-          <span class="t-area">茅ヶ崎市</span>
-          <span class="seal">津</span>
-        </p>
       </figure>
+      <p class="hero-tate" aria-hidden="true">
+        <span class="t-cat">造園・外構</span>
+        <span class="t-area">茅ヶ崎市</span>
+        <span class="seal">津</span>
+      </p>
+      <p class="hero-since opt"></p>
     </div>
   </div>
-  <a class="scroll-cue" href="#intro" aria-hidden="true" tabindex="-1">SCROLL</a>
 </section>
 
 <!-- ===================== Intro ===================== -->
 <section class="intro" id="intro" aria-label="ごあいさつ">
-  <div class="wrap intro-grid">
-    <p class="intro-lead reveal">湘南の潮風と気候を知る、地元の造園屋さん。</p>
-    <div class="reveal" style="--d:.12s">
-      <div class="intro-body"><p>大津賀造園は、茅ヶ崎市に本店と事務所を構える地域密着の造園・外構会社です。経験豊富な職人と有資格者が、庭づくりから外構工事まで幅広く対応します。</p><p>湘南特有の潮風や気候に合わせた樹木の手入れや素材の選定も、地域密着ならでは。何かあったときもすぐに駆けつける「近所の造園屋さん」であり続けます。</p></div>
-      <div class="stamps opt"><div class="stamp"><strong>造園＋外構</strong><span>まとめて相談できる</span></div><div class="stamp"><strong>有資格者</strong><span>複数在籍の職人集団</span></div><div class="stamp"><strong>茅ヶ崎</strong><span>湘南の地域密着</span></div></div>
+  <div class="wrap">
+    <div class="stamps opt" data-stagger><div class="stamp"><strong>造園＋外構</strong><span>まとめて相談できる</span></div><div class="stamp"><strong>有資格者</strong><span>複数在籍の職人集団</span></div><div class="stamp"><strong>茅ヶ崎</strong><span>湘南の地域密着</span></div></div>
+    <div class="intro-grid">
+      <p class="intro-lead reveal">湘南の潮風と気候を知る、地元の造園屋さん。</p>
+      <div class="intro-body reveal" style="--d:.12s"><p>大津賀造園は、茅ヶ崎市に本店と事務所を構える地域密着の造園・外構会社です。経験豊富な職人と有資格者が、庭づくりから外構工事まで幅広く対応します。</p><p>湘南特有の潮風や気候に合わせた樹木の手入れや素材の選定も、地域密着ならでは。何かあったときもすぐに駆けつける「近所の造園屋さん」であり続けます。</p></div>
     </div>
   </div>
 </section>
@@ -708,7 +776,7 @@ html.lb-lock{ overflow: hidden; }
 </section>
 
 <!-- ===================== Works ===================== -->
-<section class="sec sec--ink" id="works" data-block aria-labelledby="works-title">
+<section class="sec sec--ink sec--loose" id="works" data-block aria-labelledby="works-title">
   <div class="wrap">
     <div class="works-intro">
       <div class="sec-head reveal">
@@ -735,7 +803,7 @@ html.lb-lock{ overflow: hidden; }
 </section>
 
 <!-- ===================== Flow ===================== -->
-<section class="sec sec--alt" id="flow" data-block aria-labelledby="flow-title">
+<section class="sec sec--alt sec--tight" id="flow" data-block aria-labelledby="flow-title">
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="sec-num" aria-hidden="true">其の四</span>
@@ -747,7 +815,7 @@ html.lb-lock{ overflow: hidden; }
 </section>
 
 <!-- ===================== Area ===================== -->
-<section class="sec" id="area" aria-labelledby="area-title">
+<section class="sec sec--tight" id="area" aria-labelledby="area-title">
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="sec-num" aria-hidden="true">其の五</span>
@@ -760,7 +828,7 @@ html.lb-lock{ overflow: hidden; }
         <p class="area-line">茅ヶ崎・湘南の造園・外構</p>
         <div class="chips opt"><li>茅ヶ崎市</li><li>藤沢市</li><li>平塚市</li><li>鎌倉市</li><li>寒川町</li></div>
         <div class="area-actions">
-          <a class="btn btn--ghost" data-cta href="tel:0467388528">電話で相談する<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn" data-cta href="tel:0467388528">電話で相談する<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
       </div>
     </div>
@@ -768,7 +836,7 @@ html.lb-lock{ overflow: hidden; }
 </section>
 
 <!-- ===================== FAQ ===================== -->
-<section class="sec sec--alt" id="faq" data-block aria-labelledby="faq-title">
+<section class="sec sec--alt sec--tight" id="faq" data-block aria-labelledby="faq-title">
   <div class="wrap faq-wrap">
     <div class="sec-head sec-head--center reveal">
       <span class="sec-num" aria-hidden="true">其の六</span>
@@ -815,7 +883,7 @@ html.lb-lock{ overflow: hidden; }
     </div>
     <p class="contact-shop reveal">大津賀造園　茅ヶ崎・湘南の造園・外構</p>
     <div class="contact-cta reveal" style="--d:.12s">
-      <a class="btn btn--light" data-cta href="tel:0467388528">電話で相談する<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a class="btn btn--on-ink" data-cta href="tel:0467388528">電話で相談する<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       <div class="contact-sub">
         <a class="contact-tel" data-tel href="tel:0467388528"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 4h3.5l1.8 4.4-2.3 1.4a11 11 0 0 0 6.2 6.2l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/></svg><span class="v">0467-38-8528</span></a>
         <a class="contact-ig" href="https://www.instagram.com/otsuga_zoen284/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".9" fill="currentColor" stroke="none"/></svg><span class="v">@otsuga_zoen284</span></a>
